@@ -1,0 +1,36 @@
+# 凭证与密钥
+credentials.json
+.env
+*.key
+*.pem
+
+# 会话数据（含对话历史，隐私数据）
+sessions/
+session-env/
+history.jsonl
+
+# 运行时缓存
+cache/
+backups/
+downloads/
+paste-cache/
+shell-snapshots/
+
+# 遥测与状态（随会话变化，无复用价值）
+telemetry/
+file-history/
+tasks/
+teams/
+plans/
+projects/
+
+# 配置文件（含第三方 API key，使用模板替代）
+settings.json
+
+# 临时文件
+*.tmp
+*.log
+.last-cleanup
+claude-launcher.cmd
+claude.reg
+policy-limits.json
