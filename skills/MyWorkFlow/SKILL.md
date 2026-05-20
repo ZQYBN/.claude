@@ -171,13 +171,14 @@ implementation skill until this decision is made and the plan is approved.**
 
 **DO**
 - Invoke `MyWorkFlow-Team` for DISPATCH procedure
+- Create feature branch: `git checkout -b feature/<name>`
 - Generate one AgentTask per sub-agent
-- Create team with `TeamCreate`
-- For each AgentTask, in parallel:
-  - Create isolated worktree from feature branch
-  - Spawn sub-agent with AgentTask + plan + contracts
-  - Sub-agent follows: IMPLEMENT → SELF-TEST → SELF-REVIEW → report
-- Wait for all sub-agents to report
+- Spawn all sub-agents in PARALLEL using `Agent` tool with
+  `isolation: "worktree"` — this creates an isolated worktree for each
+  sub-agent while the main agent's session stays on the feature branch
+- **NEVER use `EnterWorktree` for sub-agents** — it steals the main agent's
+  session directory
+- Wait for all sub-agents to report (each returns its worktree branch name)
 
 **EXIT**
 - [ ] All sub-agents have submitted reports

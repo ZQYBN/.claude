@@ -114,26 +114,57 @@ The main agent generates one AgentTask per sub-agent at DISPATCH:
 
 ## DISPATCH Phase (Main Agent)
 
-1. Create the team: `TeamCreate` with team_name matching the feature
-2. For each AgentTask, in parallel:
-   - Create a worktree: `EnterWorktree` from the feature branch
-   - Name: `feature/<name>-<agent-id>`
-   - Spawn a sub-agent with the AgentTask as its prompt
-   - The sub-agent works in its isolated worktree
-3. Wait for all sub-agents to complete and report
+### CRITICAL: Worktree isolation mechanism
+
+**NEVER use `EnterWorktree` to isolate sub-agents.** `EnterWorktree` switches
+the CURRENT session into a worktree — it steals the main agent's working
+directory. The main agent must stay on the feature branch to orchestrate.
+
+**Use the `Agent` tool with `isolation: "worktree"` instead.** This creates
+an isolated worktree for the spawned sub-agent while the main agent's session
+remains untouched:
+
+```
+Agent(
+  isolation: "worktree",
+  description: "agent-xxx-fe: implement herb picker frontend",
+  prompt: "<AgentTask content>"
+)
+```
+
+The `isolation: "worktree"` parameter automatically:
+1. Creates a git worktree on a new branch
+2. Runs the sub-agent inside that isolated worktree
+3. Returns the worktree path and branch name in the result when done
+4. Main agent's session never leaves the feature branch
+
+### Dispatch procedure
+
+1. Create the feature branch: `git checkout -b feature/<name>`
+2. Spawn all sub-agents in PARALLEL (single message, multiple `Agent` calls):
+
+```
+Agent(isolation: "worktree", description: "agent-1: ...", prompt: "<AgentTask 1>")
+Agent(isolation: "worktree", description: "agent-2: ...", prompt: "<AgentTask 2>")
+Agent(isolation: "worktree", description: "agent-3: ...", prompt: "<AgentTask 3>")
+```
+
+3. Wait for all sub-agents to complete. Each returns its worktree branch name.
+4. Proceed to INTEGRATE phase to review and merge.
 
 ### Worktree topology
 
 ```
-Main Agent (feature/xxx)
-  ├── Sub-agent A → worktree A (feature/xxx-agent-a)
-  ├── Sub-agent B → worktree B (feature/xxx-agent-b)
-  └── Sub-agent C → worktree C (feature/xxx-agent-c)
+Main Agent session (feature/xxx — never moves)
+  │
+  ├── Agent(isolation: "worktree") → Sub-agent A (worktree branch A)
+  ├── Agent(isolation: "worktree") → Sub-agent B (worktree branch B)
+  └── Agent(isolation: "worktree") → Sub-agent C (worktree branch C)
 ```
 
-Sub-agents commit freely within their worktrees. No cross-agent
+Sub-agents commit freely within their worktree branches. No cross-agent
 communication. All coordination is through the shared contracts in the plan
-document.
+document. The main agent never leaves `feature/xxx`.
 
 ## Sub-Agent Execution
 
@@ -201,9 +232,22 @@ only reports when everything passes.
 The main agent reviews all sub-agent outputs before merging. It never writes
 code — it audits, standardizes, and re-dispatches.
 
+### Step 0: Locate worktree branches
+
+Each sub-agent run with `isolation: "worktree"` returns a branch name. List
+all returned branches before proceeding.
+
 ### Step 1: Per-agent diff audit
 
-For each sub-agent's worktree diff:
+For each sub-agent's worktree branch, review the diff against the feature
+branch:
+
+```bash
+git diff feature/<name>...<worktree-branch> --stat
+git diff feature/<name>...<worktree-branch>
+```
+
+Check:
 - [ ] Files changed are within the AgentTask scope?
 - [ ] No out-of-scope modifications (other agents' files, shared contracts)?
 - [ ] All acceptance criteria pass?
@@ -229,9 +273,13 @@ AgentTask → dispatches to the relevant sub-agent.
 
 ### Step 3: Merge
 
-All audits pass → apply each worktree diff to the feature branch → unified
-commit (main agent writes the commit message) → `ExitWorktree` (remove) each
-worktree.
+All audits pass → merge each worktree branch into the feature branch:
+
+```bash
+git merge <worktree-branch> --no-ff -m "feat(scope): merge <agent-name> changes"
+```
+
+After all merges, delete the merged worktree branches (optional cleanup).
 
 ### Rejection limit
 
