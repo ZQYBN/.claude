@@ -18,6 +18,21 @@ description: >
 
 # MyWorkFlow
 
+## CONTROL-PLANE PURITY — READ THIS FIRST
+
+**When this skill dispatches sub-agents, the main agent NEVER writes code.**
+
+- Sub-agent output is incomplete? → Re-dispatch with a fix AgentTask
+- Sub-agent failed? → Re-dispatch or escalate to human
+- Only 1 sub-agent finished and 4 are stuck? → Wait, re-dispatch, or escalate
+- "It would be faster if I just did it myself"? → **NO. Never.**
+
+The main agent orchestrates. Sub-agents implement. This separation is
+absolute. If you find yourself reaching for `Edit` or `Write` during
+DISPATCH or INTEGRATE, STOP — you are violating the architecture.
+
+---
+
 Master workflow orchestrator. Every phase has three sections:
 
 - **ENTER**: what must be true before starting this phase
@@ -169,24 +184,53 @@ implementation skill until this decision is made and the plan is approved.**
 - Contracts defined with owner = Main Agent
 - User has approved the plan (including split)
 
-**DO**
+**DO — execute in this exact order. Do not reorder.**
+
+### Step 1: Create team (ALWAYS FIRST)
+
+```
+TeamCreate(team_name: "<feature>-team")
+```
+
+Without `TeamCreate`, there is NO native status tracking table. The main
+agent will be forced to manually poll agent states from text, which is
+unreliable and wastes context. This step is NOT optional.
+
+### Step 2: Create feature branch
+
+```
+git checkout -b feature/<name>
+```
+
+### Step 3: Load supplement and prepare AgentTasks
+
 - Invoke `MyWorkFlow-Team` for DISPATCH procedure
-- Create team: `TeamCreate(team_name: "<feature>-team")` — this enables
-  Claude Code's native agent state tracking table. Without it, agent states
-  must be manually polled, which is unreliable
-- Create feature branch: `git checkout -b feature/<name>`
-- Generate one AgentTask per sub-agent
-- Spawn all sub-agents in PARALLEL (single message, multiple `Agent` calls)
-  — every call includes `team_name` + `isolation: "worktree"`:
-  ```
-  Agent(isolation: "worktree", team_name: "<feature>-team", ...)
-  Agent(isolation: "worktree", team_name: "<feature>-team", ...)
-  ```
-- **NEVER use `EnterWorktree` for sub-agents** — it steals the main agent's
-  session directory
-- **Use the system's status table, not text polling** — the team + Agent
-  framework provides a real-time MD table showing each agent's state
-- Wait for all sub-agents to report (each returns its worktree branch name)
+- Generate one AgentTask per sub-agent using the template
+
+### Step 4: Spawn sub-agents in PARALLEL
+
+**Use `Agent` tool with `isolation: "worktree"` + `team_name`.**
+NEVER use `EnterWorktree` — it hijacks the main agent's session directory.
+The `Agent` tool creates the worktree inside the sub-agent, leaving the
+main agent untouched.
+
+Spawn all agents in a SINGLE message (multiple `Agent` calls):
+
+```
+Agent(isolation: "worktree", team_name: "<feature>-team",
+      description: "agent-1: <role>", prompt: "<AgentTask 1>")
+Agent(isolation: "worktree", team_name: "<feature>-team",
+      description: "agent-2: <role>", prompt: "<AgentTask 2>")
+```
+
+### Step 5: Wait and observe
+
+- The system provides a real-time MD status table — use it, do not manually
+  poll agent states from text
+- Each agent runs its worktree, completes, and returns a branch name
+- If an agent fails or produces incomplete output: write a fix AgentTask and
+  re-dispatch. NEVER write code yourself
+- Wait for ALL agents to report
 
 **EXIT**
 - [ ] All sub-agents have submitted reports

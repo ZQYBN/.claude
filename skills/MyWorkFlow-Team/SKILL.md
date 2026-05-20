@@ -13,6 +13,20 @@ description: >
 
 # MyWorkFlow-Team
 
+## CONTROL-PLANE PURITY
+
+**The main agent never writes code during DISPATCH or INTEGRATE.**
+
+- Agent output incomplete? → Write a fix AgentTask, re-dispatch
+- Agent failed? → Re-dispatch or escalate to human
+- "I could just fix this myself"? → **NO.** Re-dispatch.
+
+The main agent audits, standardizes, and re-dispatches. Sub-agents implement.
+If you are the main agent and you are about to use `Edit`, `Write`, or `Bash`
+to modify source code during DISPATCH or INTEGRATE, STOP.
+
+---
+
 Agent team workflow. This skill is loaded by `MyWorkFlow` during Phase 2
 (PLAN) when the plan reveals independently executable sub-tasks. The main
 agent uses this skill to split work, dispatch sub-agents in parallel, and
