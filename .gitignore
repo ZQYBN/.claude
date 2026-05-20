@@ -22,7 +22,13 @@ file-history/
 tasks/
 teams/
 plans/
-projects/
+
+# 项目状态（仅保留跨设备的 auto-memory 文件，会话转录等自动生成）
+projects/*
+!projects/*/
+projects/*/**
+!projects/*/memory/
+!projects/*/memory/**
 
 # 配置文件（含第三方 API key，使用模板替代）
 settings.json
