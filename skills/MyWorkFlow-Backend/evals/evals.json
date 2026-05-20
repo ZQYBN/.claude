@@ -1,0 +1,17 @@
+{
+  "skill_name": "MyWorkFlow-Backend",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Create a new API endpoint for batch-importing herbs from a CSV file. The endpoint should accept multipart form data, parse the CSV, validate each row against the herbs table schema, and return a summary of imported/skipped/failed rows.",
+      "expected_output": "After MyWorkFlow loads this supplement: IMPLEMENT phase confirms herb table schema before coding, runs ./mvnw.cmd compile. REVIEW phase checks API returns {code, message, data} envelope, error handling is complete (no empty catch), and no destructive SQL.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "The createPrescription endpoint is returning a bare Prescription entity instead of the standard {code, message, data} wrapper. The frontend is crashing because it expects the envelope format.",
+      "expected_output": "During REVIEW phase, catches the API response format violation — all endpoints must return {code, message, data}. Flags as a backend rule violation (backend.md: 禁止直接返回实体对象).",
+      "files": []
+    }
+  ]
+}

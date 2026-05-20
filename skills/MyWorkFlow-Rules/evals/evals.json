@@ -1,0 +1,23 @@
+{
+  "skill_name": "MyWorkFlow-Rules",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "This is the third time we've had a bug where someone used antd's List component instead of a native ul/li. We have the rule in frontend.md but it keeps happening. Maybe we need a stronger check.",
+      "expected_output": "Invokes MyWorkFlow-Rules → identifies this as 'repeated mistake' trigger → follows the change process: discuss (is this a rule gap or enforcement gap?), draft (add to REVIEW checklist or strengthen wording), confirm with user, write.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "We just upgraded to Ant Design 7 and the rule about 'Notification.message' no longer applies because they removed that API entirely. We should clean up the rules.",
+      "expected_output": "Invokes MyWorkFlow-Rules → identifies this as 'obsolete rule' trigger → marks the Notification.message rule as [DEPRECATED] or removes it → follows the change process with user confirmation.",
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "I noticed the scope.md rule says '禁止修改公共基础设施' but the frontend.md rules say I should refactor shared components. These seem to conflict — which one wins?",
+      "expected_output": "Invokes MyWorkFlow-Rules → identifies this as 'rule conflict' trigger → applies the priority order (特定规则优先于通用规则, or vice versa depending on context) → proposes resolution to user.",
+      "files": []
+    }
+  ]
+}

@@ -1,0 +1,23 @@
+{
+  "skill_name": "MyWorkFlow-Skills",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "The brainstorming skill keeps getting triggered for simple one-line bug fixes where the root cause is obvious. It's adding unnecessary overhead. Can we make it manual-only and only invoke it for real feature work?",
+      "expected_output": "Invokes MyWorkFlow-Skills → identifies this as 'demote to manual' trigger (skill auto-triggered but frequently unwanted) → follows the process: AI proposes removing auto-trigger, user confirms → updates CLAUDE.md to remove brainstorming from auto-trigger list.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "I found a new skill called 'database-migration-helper' that generates Flyway migration scripts from JPA entity changes. I installed it and it works great — I've used it manually 4 times now. Should we make it auto-trigger?",
+      "expected_output": "Invokes MyWorkFlow-Skills → identifies this as 'promote to auto-trigger' trigger (manual invocation ≥ 3 times) → follows the process: AI proposes, user confirms → adds to CLAUDE.md auto-trigger list.",
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "We need a new skill for generating PDF reports from patient data. The workflow would be: query patient data → render to HTML template → convert to PDF with Playwright → save to filesystem.",
+      "expected_output": "Does NOT invoke MyWorkFlow-Skills for management — this is a request to CREATE a new skill, not manage an existing one. Should redirect to skill-creator skill instead. MyWorkFlow-Skills handles lifecycle changes to existing skills, not creation.",
+      "files": []
+    }
+  ]
+}
