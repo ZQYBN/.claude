@@ -85,7 +85,10 @@ When splitting is decided, the plan document must include an
 
 ## AgentTask Template
 
-The main agent generates one AgentTask per sub-agent at DISPATCH:
+The main agent generates one AgentTask per sub-agent at DISPATCH. The
+AgentTask IS the sub-agent's complete instruction set — it includes the
+execution protocol so the sub-agent knows how to work regardless of which
+skills it has loaded.
 
 ```markdown
 # AgentTask: <agent-name>
@@ -110,9 +113,85 @@ The main agent generates one AgentTask per sub-agent at DISPATCH:
 - [ ] Do not modify shared contracts
 - [ ] Do not modify other agents' files
 - [ ] Do not introduce new dependencies without approval
+
+## Execution Protocol
+
+You MUST follow these steps in order. Do not skip any step.
+
+### Step 1: Read context
+- This AgentTask
+- The shared contracts referenced above
+- Existing code in the files listed above
+
+### Step 2: IMPLEMENT
+- Follow the file list exactly — do not touch files outside the list
+- Comply with all rules/ directory constraints
+- Run compile check before each commit
+- One commit per logical unit
+
+### Step 3: SELF-TEST
+- Test only your changes (fine-grained)
+- Frontend: jest + playwright if UI
+- Backend: mvn test
+- If any test fails → fix → re-run SELF-TEST (loop internally, no limit)
+- All pass → proceed to Step 4
+
+### Step 4: SELF-REVIEW — MANDATORY EXIT GATE
+
+STOP. Do not report yet. You MUST complete this checklist and output the
+result BEFORE proceeding to Step 5:
+
+- [ ] All acceptance criteria met? (re-check each one explicitly)
+- [ ] Files changed are ALL within the File list above? (check with `git diff --stat`)
+- [ ] Shared contracts UNCHANGED? (verify — modifying a contract is a violation)
+- [ ] Compilation passes? (run it now)
+- [ ] Code complies with rules/? (check against the rule files)
+
+If ANY item fails → fix → re-run Step 3 (SELF-TEST) → re-run Step 4.
+
+You MUST output:
+
+```
+## SELF-REVIEW Result
+
+- Acceptance: ALL PASS / FAILURES: <list>
+- Scope: WITHIN LIMITS / OVERRIDE: <list out-of-scope files>
+- Contracts: UNCHANGED / MODIFIED: <list>
+- Compilation: PASS / FAIL
+- Rules compliance: PASS / FAIL: <list violations>
 ```
 
-## DISPATCH Phase (Main Agent)
+Do NOT proceed to Step 5 until every item passes.
+
+### Step 5: Update docs
+- Update associated plan/spec files if implementation differs from plan
+
+### Step 6: Report
+Output your final report using the format below.
+```
+
+## Sub-Agent Report Format
+
+The sub-agent MUST output this report as the final message:
+
+```markdown
+# Agent Report: <agent-name>
+
+## Diff Summary
+- Files modified: N
+- Lines added: +X
+- Lines removed: -Y
+
+## SELF-REVIEW Result
+- Acceptance: ALL PASS
+- Scope: WITHIN LIMITS
+- Contracts: UNCHANGED
+- Compilation: PASS
+- Rules compliance: PASS
+
+## Proposals (optional)
+- Contract change proposal: <description and rationale>
+```
 
 ### CRITICAL: Worktree isolation mechanism
 
@@ -166,66 +245,17 @@ Sub-agents commit freely within their worktree branches. No cross-agent
 communication. All coordination is through the shared contracts in the plan
 document. The main agent never leaves `feature/xxx`.
 
-## Sub-Agent Execution
+## Sub-Agent Execution (reference for main agent)
 
-Each sub-agent receives an AgentTask and follows these steps within its
-worktree:
+The execution protocol is embedded directly in the AgentTask template (see
+above). This ensures every sub-agent receives the protocol in its prompt,
+regardless of which skills are loaded. The main agent does not need to
+separately instruct the sub-agent — the AgentTask IS the instruction.
 
-```
-Step 1: Read context
-  - AgentTask instructions
-  - Shared contracts (types, API signatures)
-  - Existing code in scope
-
-Step 2: IMPLEMENT
-  - Follow the file list exactly
-  - Comply with all rules/ directory constraints
-  - Compile check before each commit
-  - One commit per logical unit
-
-Step 3: SELF-TEST
-  - Test only your own changes (fine-grained)
-  - Frontend: jest + playwright if UI
-  - Backend: mvn test
-        ↓ FAIL
-        Fix → re-run SELF-TEST (internal loop, unlimited retries)
-        ↓ ALL PASS
-
-Step 4: SELF-REVIEW
-  - All acceptance criteria met?
-  - Any out-of-scope file modifications?
-  - Shared contracts untouched?
-  - Compilation passes?
-  - Code complies with rules/?
-        ↓ FAIL
-        Fix → re-run SELF-TEST → SELF-REVIEW
-        ↓ ALL PASS
-
-Step 5: Update associated docs (plan/spec) to reflect implementation
-
-Step 6: Report to main agent
-```
-
-The internal loop (Steps 3-4) does not involve the main agent. The sub-agent
-only reports when everything passes.
-
-## Sub-Agent Report Format
-
-```markdown
-# Agent Report: <agent-name>
-
-## Diff Summary
-- Files modified: N
-- Lines added: +X
-- Lines removed: -Y
-
-## Self-Check Results
-- [x] Acceptance criterion 1
-- [x] Acceptance criterion 2
-
-## Proposals (optional)
-- Contract change proposal: <description and rationale>
-```
+Key design: the SELF-REVIEW exit gate inside the AgentTask forces the
+sub-agent to output a structured result before reporting. The main agent
+uses these results during INTEGRATE to verify each sub-agent passed its
+own checks.
 
 ## INTEGRATE Phase (Main Agent)
 
