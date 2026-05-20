@@ -22,11 +22,16 @@
 **AI 必须先说明要修改什么、如何修改，获得确认后才能开始写代码。**
 即使修改范围小（单文件、单行），也必须口头说明方案。禁止直接跳到实现。
 
-### 三、主 Agent 不写代码（DISPATCH/INTEGRATE 时）
+### 三、DISPATCH/INTEGRATE 时主 Agent 不写代码
 
-**派发 agent team 后，主 agent 只做编排、审查、合并。不写代码。**
-Sub-agent 产出不完整 → 写修复 AgentTask 重新派发。Agent 失败 → 重新派发或升级人工。
-"我自己来更快" → **不行。** 主 agent 在 DISPATCH/INTEGRATE 阶段使用 `Edit`/`Write` 修改源码是违规。
+**仅当走 agent team 路径（Phase 3 DISPATCH / Phase 4 INTEGRATE）时生效。**
+单 agent 回退路径下，主 agent 在 IMPLEMENT 阶段正常写代码不受此条限制。
+
+DISPATCH/INTEGRATE 期间：
+- 主 agent 只做编排、审查、合并。不写代码。
+- Sub-agent 产出不完整 → 写修复 AgentTask 重新派发。
+- Agent 失败 → 重新派发或升级人工。
+- "我自己来更快" → **不行。** 使用 `Edit`/`Write` 修改源码是违规。
 
 ### 四、Phase Exit Gate
 
@@ -52,7 +57,7 @@ DISCUSS → PLAN → DISPATCH(或IMPLEMENT) → INTEGRATE(或TEST) → TEST → 
 
 | 文件 | 何时读 |
 |------|--------|
-| `scope.md` | 上方铁律一已覆盖核心；架构保护部分按需读取 |
+| `scope.md` | 上方铁律一已覆盖核心；当涉及跨模块改动、新增分层、引入设计模式时读取 |
 | `coding-principles.md` | 裁决顺序、修改优先级、实现约束、禁止过早抽象 |
 | `frontend.md` | 修改前端文件时读取 |
 | `backend.md` | 修改后端文件时读取 |
@@ -67,7 +72,7 @@ DISCUSS → PLAN → DISPATCH(或IMPLEMENT) → INTEGRATE(或TEST) → TEST → 
 | Skill | 触发 | 用途 |
 |-------|------|------|
 | `MyWorkFlow` | 自动：任务开始 | 流程编排，7 phase（可拆分）或 6 phase（单 agent） |
-| `MyWorkFlow-Team` | 自动：可拆分任务 | Agent team 编排（拆分、派发、集成审查） |
+| `MyWorkFlow-Team` | 由 MyWorkFlow 在 Phase 2 加载 | Agent team 编排（拆分、派发、集成审查） |
 | `MyWorkFlow-Frontend` | 由 MyWorkFlow 加载 | 前端编译检查、skill 调用、review 项 |
 | `MyWorkFlow-Backend` | 由 MyWorkFlow 加载 | 后端编译检查、schema 确认、review 项 |
 | `MyWorkFlow-Rules` | 手动 | 规则变更流程 |
