@@ -18,171 +18,319 @@ description: >
 
 # MyWorkFlow
 
-Master workflow orchestrator. You are about to work on a task — before you
-write a single line of code, walk through these phases. Each phase exists
-for a reason; skipping one creates rework.
+Master workflow orchestrator. Every phase has three sections:
 
-## Phase 0: Determine task type
+- **ENTER**: what must be true before starting this phase
+- **DO**: what to accomplish in this phase
+- **EXIT**: mandatory decision gate — you are NOT allowed to proceed to the
+  next phase without explicitly passing this gate
 
-Analyze the user's request and the files involved. This decides which
-supplement to load, so you run the right compile checks and call the right
-domain skills.
+## Phase Transition Protocol
+
+After completing each phase, you MUST output:
+
+```
+## Phase Result: <Phase Name>
+
+### Output
+<what was produced>
+
+### Decision
+<explicit choice made at exit gate>
+
+### Next Phase
+<phase name>
+```
+
+**You cannot leave a phase without writing this block.** If you feel the
+urge to start coding, STOP — check which phase you're in and whether the
+exit gate has been passed.
+
+---
+
+## Phase 0: TRIAGE — Determine Task Type
+
+**ENTER**
+- User has made a request
+
+**DO**
+- Analyze the user's request and files involved
 
 | Condition | Type | Action |
 |-----------|------|--------|
 | Files under `frontend/` only | Frontend | Load `MyWorkFlow-Frontend` |
 | Files under `backend/` only | Backend | Load `MyWorkFlow-Backend` |
-| Files in both, or the request touches both layers | Fullstack | Load both supplements |
-| Pure docs, config, or conversation | General | No supplement needed |
+| Files in both layers | Fullstack | Load both |
+| Pure docs, config, or conversation | General | No supplement |
 
-## Phase 1: DISCUSS
+**EXIT**
+- [ ] Task type recorded: FRONTEND / BACKEND / FULLSTACK / GENERAL
+- [ ] Supplements loaded (if applicable)
+- → ALWAYS proceed to Phase 1
 
-**Goal**: Align on what the problem actually is before solving it.
+---
 
-Misalignment at this stage is the most expensive mistake — you can waste
-entire implementation cycles building the wrong thing. Spend time here.
+## Phase 1: DISCUSS — Align on the Problem
 
-- If the request is a feature, design change, or anything ambiguous: invoke
-  `brainstorming` to explore intent, constraints, and approaches
-- If the root cause is already clear and the fix is scoped to a single file:
-  skip brainstorming and proceed directly to Phase 2 (PLAN)
-- Output: a shared understanding of the problem
-- Do not write code in this phase — you don't yet know what to build
+**ENTER**
+- Task type known from Phase 0
 
-## Phase 2: PLAN
+**DO**
+- Clarify what the problem actually is before solving it
+- Misalignment here is the most expensive mistake — entire implementation
+  cycles get wasted building the wrong thing
+- Feature, design change, or anything ambiguous → invoke `brainstorming`
+- Root cause clear AND fix scoped to a single file → skip brainstorming
+- Do NOT write code in this phase
 
-**Goal**: Read the code, form a solution, and get approval before touching anything.
+**EXIT — complete ALL before proceeding:**
 
-Guessing at a solution without reading the surrounding code produces plans
-that fall apart on contact with reality. This phase prevents that.
+- [ ] Shared understanding of the problem reached
+- [ ] User has confirmed the understanding (explicitly or via `1`)
+- → ALWAYS proceed to Phase 2
 
-- Read the relevant modules and existing code
+STOP. Do not begin planning until the user has confirmed the problem
+understanding.
+
+---
+
+## Phase 2: PLAN — Design the Solution
+
+**ENTER**
+- Problem understanding confirmed from Phase 1
+
+**DO**
+- Read relevant modules and existing code
 - Assess scope:
-  - **Verbal plan**: fewer than 3 files changed, no new modules. State the
-    root cause, fix location, and approach directly in conversation.
-  - **Written plan**: 3+ files changed or new modules created. Invoke
-    `writing-plans` and write to `docs/superpowers/plans/<YYYY-MM-DD-slug>.md`.
-    Written plans serve as external memory — long conversations lose context.
-- Never skip this phase. State what you will change and how before doing it.
+  - < 3 files, no new modules → verbal plan (state root cause, fix location,
+    approach directly in conversation)
+  - ≥ 3 files or new modules → invoke `writing-plans`, write to
+    `docs/superpowers/plans/<YYYY-MM-DD-slug>.md`
+- **Before presenting for user approval**, analyze split-worthiness (see EXIT)
 
-### Split decision
+**EXIT — you MUST complete ALL of the following before proceeding.**
 
-Before presenting the plan for user approval, assess whether the task can be
-split into parallel sub-tasks:
+STOP. Do not start implementing. Do not create a branch. First, explicitly
+answer these questions:
 
-1. List the sub-tasks from the plan
-2. Apply split rules from `MyWorkFlow-Team` (hard constraint: no file overlap;
-   semantic coupling check; minimum unit ≥ one component/endpoint)
-3. If ≥ 2 AgentTasks emerge:
-   - Invoke `MyWorkFlow-Team` for detailed split + contract generation
-   - Include `## Agent Team Assignment` section in the plan document
-   - Mark task as **splittable** → Phase 3 will be DISPATCH
-   - The user reviews the split alongside the rest of the plan
-4. If < 2 AgentTasks → mark as **not splittable** → Phase 3 will be IMPLEMENT
+### Split Analysis
+
+1. List every sub-task from the plan
+2. For each sub-task, identify: files touched, contracts consumed, contracts
+   produced
+3. Apply `MyWorkFlow-Team` split rules:
+   - Hard constraint: no two AgentTasks share the same file
+   - Semantic coupling: shared contract → same agent; shared hook/service →
+     same agent
+   - Minimum unit: at least one complete component or API endpoint
+4. Count splittable AgentTasks
+
+### Decision (pick ONE — do not proceed without picking)
+
+- **DISPATCH**: ≥ 2 AgentTasks identified → invoke `MyWorkFlow-Team` for
+  detailed split + contract generation, include `## Agent Team Assignment`
+  in plan document, present to user for approval
+- **SINGLE-AGENT**: < 2 AgentTasks → no AgentTeam section needed, present
+  plan to user for single-agent approval
+
+### Phase Result output:
+
+```
+## Phase Result: PLAN
+
+### Output
+- Plan type: verbal / written (path)
+- Sub-tasks identified: N
+
+### Split Analysis
+- Splittable: YES / NO
+- Reason: <e.g. "3 independent pickers, no shared files, no semantic coupling">
+
+### Decision
+- DISPATCH (N AgentTasks) / SINGLE-AGENT
+
+### Next Phase
+- DISPATCH → Phase 3 DISPATCH
+- SINGLE-AGENT → Phase 3 IMPLEMENT (single-agent)
+```
+
+**You are NOT allowed to create a branch, write code, or invoke any
+implementation skill until this decision is made and the plan is approved.**
+
+---
 
 ## Phase 3: DISPATCH (splittable) or IMPLEMENT (single-agent)
 
-### If task is splittable
+### Path A: DISPATCH
 
-Invoke `MyWorkFlow-Team` for the full DISPATCH flow:
+**ENTER**
+- PLAN exit decision = DISPATCH
+- AgentTeam allocation table written
+- Contracts defined with owner = Main Agent
+- User has approved the plan (including split)
 
-1. Generate one AgentTask per sub-agent using the AgentTask template from
-   `MyWorkFlow-Team`
-2. Create the team with `TeamCreate`
-3. For each AgentTask, in parallel:
-   - Create an isolated worktree from the feature branch
-   - Spawn a sub-agent with the AgentTask + plan + contracts
-   - The sub-agent follows `MyWorkFlow-Team` sub-agent execution steps:
-     IMPLEMENT → SELF-TEST → SELF-REVIEW → report
-4. Wait for all sub-agents to complete and submit their reports
+**DO**
+- Invoke `MyWorkFlow-Team` for DISPATCH procedure
+- Generate one AgentTask per sub-agent
+- Create team with `TeamCreate`
+- For each AgentTask, in parallel:
+  - Create isolated worktree from feature branch
+  - Spawn sub-agent with AgentTask + plan + contracts
+  - Sub-agent follows: IMPLEMENT → SELF-TEST → SELF-REVIEW → report
+- Wait for all sub-agents to report
 
-### If task is not splittable
+**EXIT**
+- [ ] All sub-agents have submitted reports
+- [ ] All reports include diff summary + self-check results
+- → ALWAYS proceed to Phase 4 INTEGRATE
 
-Follow the single-agent IMPLEMENT path:
+---
 
-1. Wait for the user to approve the plan
-2. Create a feature branch from `develop`
-3. Implement in commits — one change per commit
-4. Run compile checks from the loaded supplement before each commit
-5. Invoke domain skills from the loaded supplement when its dispatch table
-   says to (e.g. the frontend supplement says: new UI → `frontend-design`,
-   design decisions → `ui-ux-pro-max`)
-6. Update associated docs (plan, spec) to match the final implementation —
-   stale docs are as harmful as missing docs
-7. Push: `git push origin feature/<name>`
+### Path B: IMPLEMENT (single-agent fallback)
 
-## Phase 4: INTEGRATE (splittable) or TEST (single-agent)
+**ENTER**
+- PLAN exit decision = SINGLE-AGENT
+- User has approved the plan
 
-### If task is splittable
+**DO**
+- Create feature branch from `develop`
+- Implement in commits — one change per commit
+- Run compile checks from loaded supplement before each commit
+- Invoke domain skills from supplement dispatch table (e.g. new UI →
+  `frontend-design`, design decisions → `ui-ux-pro-max`)
+- Update associated docs
+- Push: `git push origin feature/<name>`
 
-Follow `MyWorkFlow-Team` INTEGRATE gate review:
+**EXIT**
+- [ ] All planned changes implemented and pushed
+- [ ] Docs updated to match implementation
+- → ALWAYS proceed to Phase 4 TEST (single-agent path)
 
-1. **Per-agent diff audit**: files in scope? no out-of-scope changes?
-   acceptance criteria all pass? compiles?
-2. **Cross-agent consistency audit**: naming, patterns, structure, types
-   consistent across all agents? no unexplained `any`?
-3. Failures → write fix AgentTask → re-dispatch (max 2 rejections, then
-   escalate to specialist or human)
-4. All pass → merge worktree diffs to feature branch → unified commit →
-   `ExitWorktree` (remove)
-5. **The main agent never writes code during INTEGRATE** — it audits,
-   standardizes, and re-dispatches
+---
 
-### If task is not splittable
+## Phase 4: Path-dependent
 
-Invoke `MyTestBasedOnGit` for full integration testing:
+### Path A: INTEGRATE (splittable)
 
-- It analyzes git diff to determine what changed and maps changes to
-  mandatory verification anchors
-- Tests pass → Phase 6
-- Tests fail → fix and re-run; do not proceed with failures
+**ENTER**
+- All sub-agent reports received from Phase 3 DISPATCH
+
+**DO**
+- Follow `MyWorkFlow-Team` INTEGRATE gate review:
+
+**Step 1 — Per-agent diff audit:**
+- [ ] Files changed within AgentTask scope?
+- [ ] No out-of-scope modifications?
+- [ ] All acceptance criteria pass?
+- [ ] Compilation passes?
+
+**Step 2 — Cross-agent consistency audit:**
+- [ ] Same concept → same name across all agents
+- [ ] Same problem → same solution across all agents
+- [ ] Similar components → symmetric directory layout
+- [ ] All reference shared types; no local type alternatives
+- [ ] No unexplained `any` (every `any` has `// why:` comment)
+
+**Step 3 — Handle failures:**
+- Failure → write fix AgentTask → re-dispatch (max 2 rejections per agent)
+- 2nd rejection → escalate to specialist agent or flag for human
+- Main agent NEVER writes code
+
+**Step 4 — Merge:**
+- All pass → merge worktree diffs to feature branch
+- Unified commit (main agent writes commit message)
+- `ExitWorktree` (remove)
+
+**EXIT**
+- [ ] All worktree diffs merged and committed
+- [ ] Consistency audit passed or escalated
+- → ALWAYS proceed to Phase 5 TEST
+
+---
+
+### Path B: TEST (single-agent)
+
+**ENTER**
+- Implementation complete from Phase 3 IMPLEMENT (single-agent)
+
+**DO**
+- Invoke `MyTestBasedOnGit` — analyzes git diff, maps to verification anchors
+- Tests pass → Phase 6 REVIEW
+- Tests fail → fix and re-run
+
+**EXIT**
+- [ ] All triggered test anchors pass
+- → ALWAYS proceed to Phase 6 REVIEW
+
+---
 
 ## Phase 5: TEST (splittable only)
 
-After INTEGRATE merges all worktree changes, run full integration tests on
-the unified feature branch:
+**ENTER**
+- INTEGRATE complete, all worktree diffs merged to feature branch
 
-- Invoke `MyTestBasedOnGit` — analyzes git diff, maps to verification anchors
+**DO**
+- Invoke `MyTestBasedOnGit` — full integration test on unified branch
 - Tests pass → Phase 6
-- Tests fail → dispatch fix agent and re-run; do not proceed with failures
+- Tests fail → dispatch fix agent and re-run
+
+**EXIT**
+- [ ] All triggered test anchors pass on the merged branch
+- → ALWAYS proceed to Phase 6 REVIEW
+
+---
 
 ## Phase 6: REVIEW
 
-Self-audit before handing off to a human reviewer:
+**ENTER**
+- All tests passing (from Phase 4 single-agent path or Phase 5 splittable
+  path)
 
-- Invoke `code-review-expert` for a senior-engineer perspective
-- For refactoring tasks, also invoke `simplify` to check reuse and efficiency
-- Run the checklist:
-  - [ ] Implementation matches the plan's goals and boundaries
-  - [ ] Every change in the diff has a clear purpose
-  - [ ] No unauthorized architecture changes (new layers, new patterns,
-    directory restructuring)
-  - [ ] Rule gaps: did this bug reveal a missing or incomplete rule? If a
-    rule should have prevented this but didn't exist, flag it
-  - [ ] No extractable patterns (same pattern appears 3+ times — flag it;
-    fewer than 3 — leave it)
-  - [ ] Associated docs are updated and consistent with the code
-- If the task was splittable, also check:
-  - [ ] All sub-agent reports are accounted for
-  - [ ] Cross-agent consistency audit passed in INTEGRATE
-  - [ ] No sub-agent exceeded its AgentTask file scope
-- If you find a rule gap or extractable pattern, raise it with the user and
-  follow the `MyWorkFlow-Rules` process
+**DO**
+- Invoke `code-review-expert` for senior-engineer perspective
+- Refactoring tasks → also invoke `simplify`
+- Run checklist:
+  - [ ] Implementation matches plan's goals and boundaries
+  - [ ] Every change in diff has a clear purpose
+  - [ ] No unauthorized architecture changes
+  - [ ] Rule gaps: did this bug reveal a missing or incomplete rule? Flag it
+  - [ ] No extractable patterns (3+ occurrences → flag)
+  - [ ] Associated docs updated and consistent
+- If splittable, also check:
+  - [ ] All sub-agent reports accounted for
+  - [ ] Cross-agent consistency audit passed
+  - [ ] No sub-agent exceeded AgentTask file scope
+- Rule gap or extractable pattern found → follow `MyWorkFlow-Rules`
+
+**EXIT**
+- [ ] Code-review-expert report reviewed
+- [ ] All checklist items addressed
+- → ALWAYS proceed to Phase 7 DONE
+
+---
 
 ## Phase 7: DONE
 
-Hand off cleanly:
+**ENTER**
+- REVIEW complete, all issues resolved
 
-- The user creates the PR, merges to `develop`, and deletes the feature
-  branch — AI does not merge or touch `main`
-- Ask the user whether to archive the plan file:
+**DO**
+- User creates PR, merges to `develop`, deletes feature branch
+- AI never merges, never operates on `main`
+- Ask user whether to archive plan file:
   - One-shot task → archive after PR merge
   - Multi-phase feature → archive after all phases complete
   - Code-change record → user decides
-- Archive command: `git mv docs/superpowers/plans/<file> docs/archive/YYYY-MM/<file>`
-- Never archive without user confirmation
+- Archive: `git mv docs/superpowers/plans/<file> docs/archive/YYYY-MM/<file>`
 
-## Branch lifecycle
+**EXIT**
+- [ ] PR created (by user)
+- [ ] Archive decision made
+- → Workflow complete
+
+---
+
+## Branch Lifecycle
 
 ```
 develop
