@@ -27,6 +27,12 @@ projects/
 # 配置文件（含第三方 API key，使用模板替代）
 settings.json
 
+# 插件（Claude Code 自动维护，非用户管理内容）
+plugins/
+
+# 自引用（仓库内 .claude 目录为运行时生成，非配置内容）
+.claude/
+
 # 临时文件
 *.tmp
 *.log
