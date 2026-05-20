@@ -199,37 +199,45 @@ The sub-agent MUST output this report as the final message:
 the CURRENT session into a worktree — it steals the main agent's working
 directory. The main agent must stay on the feature branch to orchestrate.
 
-**Use the `Agent` tool with `isolation: "worktree"` instead.** This creates
-an isolated worktree for the spawned sub-agent while the main agent's session
-remains untouched:
+**Use the `Agent` tool with `isolation: "worktree"` and `team_name` instead.**
+This creates an isolated worktree for the spawned sub-agent, registers it in
+the team for native status tracking, while the main agent's session remains
+untouched:
 
 ```
 Agent(
   isolation: "worktree",
+  team_name: "<team-name>",
   description: "agent-xxx-fe: implement herb picker frontend",
   prompt: "<AgentTask content>"
 )
 ```
 
-The `isolation: "worktree"` parameter automatically:
+The `isolation: "worktree"` + `team_name` combination:
 1. Creates a git worktree on a new branch
-2. Runs the sub-agent inside that isolated worktree
-3. Returns the worktree path and branch name in the result when done
-4. Main agent's session never leaves the feature branch
+2. Registers the agent in the team (enables native status tracking table)
+3. Runs the sub-agent inside that isolated worktree
+4. Returns the worktree path and branch name in the result when done
+5. Main agent's session never leaves the feature branch
 
 ### Dispatch procedure
 
-1. Create the feature branch: `git checkout -b feature/<name>`
-2. Spawn all sub-agents in PARALLEL (single message, multiple `Agent` calls):
+1. Create team: `TeamCreate(team_name: "<feature>-team")`
+   — this enables Claude Code's native agent state tracking table
+2. Create the feature branch: `git checkout -b feature/<name>`
+3. Spawn all sub-agents in PARALLEL (single message, multiple `Agent` calls)
+   — every `Agent` call includes `team_name` + `isolation: "worktree"`:
 
 ```
-Agent(isolation: "worktree", description: "agent-1: ...", prompt: "<AgentTask 1>")
-Agent(isolation: "worktree", description: "agent-2: ...", prompt: "<AgentTask 2>")
-Agent(isolation: "worktree", description: "agent-3: ...", prompt: "<AgentTask 3>")
+Agent(isolation: "worktree", team_name: "<feature>-team", description: "agent-1: ...", prompt: "<AgentTask 1>")
+Agent(isolation: "worktree", team_name: "<feature>-team", description: "agent-2: ...", prompt: "<AgentTask 2>")
+Agent(isolation: "worktree", team_name: "<feature>-team", description: "agent-3: ...", prompt: "<AgentTask 3>")
 ```
 
-3. Wait for all sub-agents to complete. Each returns its worktree branch name.
-4. Proceed to INTEGRATE phase to review and merge.
+4. The system provides a real-time status table showing each agent's state
+   — do NOT manually poll or infer agent states from text
+5. Wait for all sub-agents to complete. Each returns its worktree branch name.
+6. Proceed to INTEGRATE phase to review and merge.
 
 ### Worktree topology
 

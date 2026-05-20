@@ -171,13 +171,21 @@ implementation skill until this decision is made and the plan is approved.**
 
 **DO**
 - Invoke `MyWorkFlow-Team` for DISPATCH procedure
+- Create team: `TeamCreate(team_name: "<feature>-team")` — this enables
+  Claude Code's native agent state tracking table. Without it, agent states
+  must be manually polled, which is unreliable
 - Create feature branch: `git checkout -b feature/<name>`
 - Generate one AgentTask per sub-agent
-- Spawn all sub-agents in PARALLEL using `Agent` tool with
-  `isolation: "worktree"` — this creates an isolated worktree for each
-  sub-agent while the main agent's session stays on the feature branch
+- Spawn all sub-agents in PARALLEL (single message, multiple `Agent` calls)
+  — every call includes `team_name` + `isolation: "worktree"`:
+  ```
+  Agent(isolation: "worktree", team_name: "<feature>-team", ...)
+  Agent(isolation: "worktree", team_name: "<feature>-team", ...)
+  ```
 - **NEVER use `EnterWorktree` for sub-agents** — it steals the main agent's
   session directory
+- **Use the system's status table, not text polling** — the team + Agent
+  framework provides a real-time MD table showing each agent's state
 - Wait for all sub-agents to report (each returns its worktree branch name)
 
 **EXIT**
