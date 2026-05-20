@@ -4,55 +4,80 @@
 
 ---
 
+## 铁律（始终生效，不可绕过）
+
+### 一、最小修改原则
+
+**只修改用户明确要求修改的内容。禁止一切顺手操作。**
+
+- 禁止顺手修复：发现无关 bug/typo/warning → 不修复，记下来事后报告
+- 禁止顺手删除：发现未使用变量/函数/文件 → 不删除
+- 禁止顺手优化：发现可改进的写法 → 不改
+- 禁止顺手重构：发现可抽取的公共逻辑 → 不抽取
+
+**每次修改前自问：用户让我改这个了吗？** 答案否定 → 不改。
+
+### 二、PLAN 阶段不可跳过
+
+**AI 必须先说明要修改什么、如何修改，获得确认后才能开始写代码。**
+即使修改范围小（单文件、单行），也必须口头说明方案。禁止直接跳到实现。
+
+### 三、主 Agent 不写代码（DISPATCH/INTEGRATE 时）
+
+**派发 agent team 后，主 agent 只做编排、审查、合并。不写代码。**
+Sub-agent 产出不完整 → 写修复 AgentTask 重新派发。Agent 失败 → 重新派发或升级人工。
+"我自己来更快" → **不行。** 主 agent 在 DISPATCH/INTEGRATE 阶段使用 `Edit`/`Write` 修改源码是违规。
+
+### 四、Phase Exit Gate
+
+**每个 phase 结束时必须显式输出决策，才能进入下一 phase。**
+禁止 phase 间无声滑入。PLAN 结束必须输出 `Decision: DISPATCH / SINGLE-AGENT`。
+
+---
+
 ## 工作流
 
 ```
-DISCUSS → PLAN → IMPLEMENT → TEST → REVIEW → DONE
+DISCUSS → PLAN → DISPATCH(或IMPLEMENT) → INTEGRATE(或TEST) → TEST → REVIEW → DONE
 ```
 
-入口 skill：`MyWorkFlow`（任务开始时自动触发，判定任务类型，加载前端/后端补充）。
-禁止跳过阶段。方案未确认前禁止编写代码。
+入口 skill：`MyWorkFlow`（任务开始时自动触发，判定类型，加载补充）。
+详细流程见 skill 文件。铁律在此，skill 文件不得弱化。
 
 ---
 
 ## 规则索引
 
-规则定义"做什么 / 不做什么"，始终生效。见 `rules/` 目录：
+完整约束在 `rules/` 目录。关键规则已在上方铁律中直接生效，其余按需读取：
 
-| 文件 | 约束范围 |
-|------|----------|
+| 文件 | 何时读 |
+|------|--------|
+| `scope.md` | 上方铁律一已覆盖核心；架构保护部分按需读取 |
 | `coding-principles.md` | 裁决顺序、修改优先级、实现约束、禁止过早抽象 |
-| `scope.md` | 范围控制、架构保护 |
-| `frontend.md` | React（无 class/any/抖动）、AntD 6（4 条）、树结构（4 必须 + 3 禁止） |
-| `backend.md` | API 格式 `{code,message,data}`、错误处理（禁空 catch、日志三要素）、数据库（确认 schema、禁破坏性 SQL） |
-| `comments.md` | 文件头注释格式、何时写/不写注释、禁止事项 |
-| `commit.md` | Commit 格式、分支命名、文档模板 |
-| `cli.md` | 命令行规范（脚本复用、临时脚本归档） |
+| `frontend.md` | 修改前端文件时读取 |
+| `backend.md` | 修改后端文件时读取 |
+| `comments.md` | 新建文件时读取 |
+| `commit.md` | 提交前读取 |
+| `cli.md` | 使用命令行时读取 |
 
 ---
 
 ## Skill 索引
 
-Skill 定义"怎么做"，封装流程与领域知识。见 `skills/` 目录：
-
-### 流程编排（MyWorkFlow 系列）
-
 | Skill | 触发 | 用途 |
 |-------|------|------|
-| `MyWorkFlow` | 自动：任务开始 | 流程编排器，判定任务类型，7 phase（可拆分时）或 6 phase（单 agent） |
-| `MyWorkFlow-Team` | 自动：可拆分任务 | Agent team 编排（拆分规则、AgentTask 模板、DISPATCH、INTEGRATE gate review） |
-| `MyWorkFlow-Frontend` | 由 MyWorkFlow 加载 | 前端补充（编译检查、skill 调用、review 项） |
-| `MyWorkFlow-Backend` | 由 MyWorkFlow 加载 | 后端补充（编译检查、schema 确认、review 项） |
-| `MyWorkFlow-Rules` | 手动：规则缺口/冲突/过时时 | 规则管理流程（发现→讨论→草拟→确认→写入） |
-| `MyWorkFlow-Skills` | 手动：skill 变更时 | Skill 管理流程（提升/降级/删除/新增） |
+| `MyWorkFlow` | 自动：任务开始 | 流程编排，7 phase（可拆分）或 6 phase（单 agent） |
+| `MyWorkFlow-Team` | 自动：可拆分任务 | Agent team 编排（拆分、派发、集成审查） |
+| `MyWorkFlow-Frontend` | 由 MyWorkFlow 加载 | 前端编译检查、skill 调用、review 项 |
+| `MyWorkFlow-Backend` | 由 MyWorkFlow 加载 | 后端编译检查、schema 确认、review 项 |
+| `MyWorkFlow-Rules` | 手动 | 规则变更流程 |
+| `MyWorkFlow-Skills` | 手动 | Skill 变更流程 |
 
-### 领域 Skills
-
-由 `MyWorkFlow` 在各阶段自动调用，不在此列出完整目录。新增 skill 通过 `MyWorkFlow-Skills` 管理。
+领域 Skills 由 MyWorkFlow 在各阶段自动调用，不在此列出。
 
 ---
 
 ## 项目适配
 
 项目级 `.claude/CLAUDE.md` 可覆盖：技术栈版本、目录结构、项目特定约束。
-禁止覆盖全局规则文件和 skill 触发配置。
+禁止覆盖本文件的铁律和 skill 触发配置。
