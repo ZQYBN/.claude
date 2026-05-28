@@ -323,15 +323,50 @@ Compare all agent implementations side-by-side:
 Inconsistency found → the main agent decides the standard → writes a fix
 AgentTask → dispatches to the relevant sub-agent.
 
-### Step 3: Merge
+### Step 3: Merge transaction
 
-All audits pass → merge each worktree branch into the feature branch:
+**Do NOT merge in parallel. Merge sequentially, one worktree branch at a time.**
 
-```bash
-git merge <worktree-branch> --no-ff -m "feat(scope): merge <agent-name> changes"
+1. Snapshot HEAD before any merge:
+   ```bash
+   git rev-parse HEAD
+   ```
+   Record this SHA — it is the rollback target if anything fails.
+
+2. For each worktree branch (in order):
+   ```bash
+   git merge <worktree-branch> --no-ff -m "feat(scope): merge <agent-name> changes"
+   ```
+   - Merge succeeds → continue to next branch
+   - **Merge CONFLICT → STOP immediately. Do NOT attempt the next branch.** Write
+     `./.claude/runtime/merge_recovery.md` and wait for human intervention.
+
+3. All merged successfully → unified commit if needed.
+
+4. Delete merged worktree branches (optional cleanup).
+
+**Merge recovery file** (`./.claude/runtime/merge_recovery.md`):
+
+```markdown
+# Merge Recovery — <feature-branch>
+
+## Snapshot
+- Pre-merge HEAD: <sha>
+- Timestamp: <ISO 8601>
+
+## Merge Status
+| Branch | Status | Notes |
+|--------|--------|-------|
+| worktree-a | merged | — |
+| worktree-b | **CONFLICT** | file.ts:45, util.ts:12 |
+
+## Recovery Commands
+git reset --hard <pre-merge-sha>   # rollback all merges
 ```
 
-After all merges, delete the merged worktree branches (optional cleanup).
+**Why sequential?** Parallel merges that conflict leave the repo in an
+undefined state. Sequential merges with immediate stop on conflict ensure
+the pre-merge SHA is always a valid rollback target.
 
 ### Rejection limit
 

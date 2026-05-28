@@ -37,21 +37,9 @@ feature 分支必须从 develop 分支创建。AI 禁止合并到 develop 分支
 
 ## 文档模板
 
-**Plan 模板**（`docs/superpowers/plans/<YYYY-MM-DD-slug>.md`）：
-
-```markdown
-# <任务标题>
-
-> 日期: YYYY-MM-DD
-> 涉及领域: frontend / backend / both
-
-## 背景
-## 目标与边界
-## 涉及文件
-## 实现方案
-## 实施步骤
-## 验收标准
-```
+**Plan 模板**：由 `writing-plans` skill 统一定义，是唯一权威模板。
+路径约定：`docs/superpowers/plans/<YYYY-MM-DD-slug>.md`。
+本文件不再自带 Plan 模板——避免双宪法冲突。
 
 **Spec 模板**（`docs/superpowers/specs/<YYYY-MM-DD-slug>.md`）：
 

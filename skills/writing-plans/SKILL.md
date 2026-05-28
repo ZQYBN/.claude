@@ -13,7 +13,10 @@ Assume they are a skilled developer, but know almost nothing about our toolset o
 
 **Announce at start:** "I'm using the writing-plans skill to create the implementation plan."
 
-**Context:** This should be run in a dedicated worktree (created by brainstorming skill).
+**Context:** If the calling workflow has already provided a worktree, use it. Otherwise,
+generate the plan document in the current workspace — no worktree is required.
+(When invoked via `MyWorkFlow`, no worktree exists yet at PLAN phase;
+MyWorkFlow creates the branch at Phase 3.)
 
 **Save plans to:** `docs/superpowers/plans/YYYY-MM-DD-<feature-name>.md`
 - (User preferences for plan location override this default)

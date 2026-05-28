@@ -61,10 +61,65 @@ exit gate has been passed.
 
 ---
 
+## Runtime Ledger (phase_ledger.json)
+
+In addition to the conversational Phase Result block, every phase MUST write a
+machine-readable checkpoint to disk. Path: `./.claude/runtime/phase_ledger.json`
+
+This is the **code-path analogue of MyWorkFlow-Docs's per-stage README.md**.
+Without it, context collapse = total amnesia.
+
+### Ledger schema
+
+```json
+{
+  "task_id": "<kebab-case-summary>",
+  "repo_root": "/absolute/path/to/repo",
+  "phase": "<0|1|2|3|4|5|6|7>",
+  "phase_name": "<TRIAGE|DISCUSS|PLAN|DISPATCH|IMPLEMENT|INTEGRATE|TEST|REVIEW|DONE>",
+  "decision": "<exit gate decision summary>",
+  "approved": "<APPROVE:* token or null>",
+  "branch": "<feature/xxx or bugfix/xxx or null>",
+  "plan_path": "<path to plan doc or null>",
+  "updated_at": "<ISO 8601>"
+}
+```
+
+### ENTER rule
+
+At the start of each phase (except Phase 0), read the ledger and verify:
+- The file exists
+- `phase` equals the preceding phase number
+- `decision` is non-empty (the exit gate was actually passed)
+
+**Violation → STOP. Do not proceed. Recover from the last valid checkpoint.**
+
+### EXIT rule
+
+After writing the `## Phase Result` conversational block, update the ledger
+immediately. The conversational block and the ledger must agree.
+
+### Path constraint
+
+`./.claude/runtime/` is **project-relative** — it lives inside the repository
+being worked on (the `repo_root` field). Never write to `~/.claude/runtime/`.
+Two parallel repos must never share the same ledger.
+
+---
+
 ## Phase 0: TRIAGE — Determine Task Type
 
 **ENTER**
 - User has made a request
+- **Ledger INIT:** Determine `task_id` (kebab-case from request summary), resolve
+  `repo_root` to absolute `$PWD`, create `./.claude/runtime/` directory, write
+  initial `phase_ledger.json` with `phase: "0"`, `phase_name: "TRIAGE"`,
+  `decision: null`, `approved: null`
+- **Dependency verification (IRON LAW #5):** Verify all hard dependencies from CLAUDE.md "工作流硬依赖" table:
+  1. `code-review-expert` — skill file exists at `skills/code-review-expert/SKILL.md`
+  2. `simplify` — built-in command available in current runtime
+  3. `MyTestBasedOnGit` — skill file exists at `skills/MyTestBasedOnGit/SKILL.md`
+  - Any missing → STOP, output missing dependency report, do NOT proceed
 
 **DO**
 - Analyze the user's request and files involved
@@ -78,8 +133,16 @@ exit gate has been passed.
 | Files in both layers | Fullstack | Load both |
 | Pure docs, config, or conversation | General | No supplement |
 
+- **Branch prefix determination:** Classify the task intent:
+  - Bug fix / defect repair / crash fix → prefix: `bugfix/`
+  - Everything else (new feature, enhancement, refactor) → prefix: `feature/`
+  - Record in ledger: write tentative branch name (e.g., `feature/herb-picker`)
+
 **EXIT**
+- [ ] Dependency verification passed (all 3 hard dependencies available)
 - [ ] Task type recorded: FRONTEND / BACKEND / FULLSTACK / GENERAL / FILE / SKILL / RULE
+- [ ] Branch prefix determined: `feature/` or `bugfix/`
+- [ ] Ledger updated: `decision` = task type, `updated_at` = now
 - [ ] If CODE (FRONTEND/BACKEND/FULLSTACK/GENERAL): supplements loaded (if applicable) → proceed to Phase 1 DISCUSS
 - [ ] If FILE: invoked `MyWorkFlow-Docs` → exit MyWorkFlow
 - [ ] If SKILL: invoked `MyWorkFlow-Skills` → exit MyWorkFlow
@@ -90,6 +153,7 @@ exit gate has been passed.
 ## Phase 1: DISCUSS — Align on the Problem
 
 **ENTER**
+- Ledger check: `phase` must be `"0"`, `decision` non-empty → OK
 - Task type known from Phase 0
 
 **DO**
@@ -103,7 +167,8 @@ exit gate has been passed.
 **EXIT — complete ALL before proceeding:**
 
 - [ ] Shared understanding of the problem reached
-- [ ] User has confirmed the understanding (explicitly or via `1`)
+- [ ] User has confirmed the understanding with approval token: `APPROVE` / `GO` / `OK`
+- [ ] Ledger updated: `phase: "1"`, `decision` = confirmed understanding, `approved` = user's token
 - → ALWAYS proceed to Phase 2
 
 STOP. Do not begin planning until the user has confirmed the problem
@@ -114,13 +179,15 @@ understanding.
 ## Phase 2: PLAN — Design the Solution
 
 **ENTER**
+- Ledger check: `phase` must be `"1"`, `approved` non-null → OK
 - Problem understanding confirmed from Phase 1
 
 **DO**
 - Read relevant modules and existing code
 - Assess scope:
   - < 3 files, no new modules → verbal plan (state root cause, fix location,
-    approach directly in conversation)
+    approach directly in conversation; still write a 2-line summary to ledger's
+    `decision` field — verbal does not mean no trace)
   - ≥ 3 files or new modules → invoke `writing-plans`, write to
     `docs/superpowers/plans/<YYYY-MM-DD-slug>.md`
 - **Before presenting for user approval**, analyze split-worthiness (see EXIT)
@@ -171,6 +238,11 @@ answer these questions:
 - SINGLE-AGENT → Phase 3 IMPLEMENT (single-agent)
 ```
 
+- [ ] User has approved the plan with token `APPROVE:PLAN`
+- [ ] Ledger updated: `phase: "2"`, `decision` = DISPATCH/SINGLE-AGENT,
+  `approved` = `APPROVE:PLAN`, `plan_path` = path to plan doc (or "verbal"),
+  `branch` = proposed branch name
+
 **You are NOT allowed to create a branch, write code, or invoke any
 implementation skill until this decision is made and the plan is approved.**
 
@@ -181,10 +253,10 @@ implementation skill until this decision is made and the plan is approved.**
 ### Path A: DISPATCH
 
 **ENTER**
+- Ledger check: `phase` must be `"2"`, `decision` = `DISPATCH`, `approved` = `APPROVE:PLAN` → OK
 - PLAN exit decision = DISPATCH
 - AgentTeam allocation table written
 - Contracts defined with owner = Main Agent
-- User has approved the plan (including split)
 
 **DO — execute in this exact order. Do not reorder.**
 
@@ -198,11 +270,14 @@ Without `TeamCreate`, there is NO native status tracking table. The main
 agent will be forced to manually poll agent states from text, which is
 unreliable and wastes context. This step is NOT optional.
 
-### Step 2: Create feature branch
+### Step 2: Create branch
+
+Use the prefix determined in Phase 0 (`feature/` or `bugfix/`):
 
 ```
-git checkout -b feature/<name>
+git checkout -b <prefix>/<name>
 ```
+**Ledger update:** Write `branch` field immediately after branch creation.
 
 ### Step 3: Load supplement and prepare AgentTasks
 
@@ -237,6 +312,7 @@ Agent(isolation: "worktree", team_name: "<feature>-team",
 **EXIT**
 - [ ] All sub-agents have submitted reports
 - [ ] All reports include diff summary + self-check results
+- [ ] Ledger updated: `phase: "3"`, `phase_name: "DISPATCH"`, `decision` = N sub-agents completed
 - → ALWAYS proceed to Phase 4 INTEGRATE
 
 ---
@@ -244,11 +320,12 @@ Agent(isolation: "worktree", team_name: "<feature>-team",
 ### Path B: IMPLEMENT (single-agent fallback)
 
 **ENTER**
+- Ledger check: `phase` must be `"2"`, `decision` = `SINGLE-AGENT`, `approved` = `APPROVE:PLAN` → OK
 - PLAN exit decision = SINGLE-AGENT
-- User has approved the plan
 
 **DO**
-- Create feature branch from `develop`
+- Create branch from `develop` using Phase 0 prefix (`feature/` or `bugfix/`)
+- **Ledger update:** Write `branch` field immediately after branch creation
 - Implement in commits — one change per commit
 - Run compile checks from loaded supplement before each commit
 - Invoke domain skills from supplement dispatch table (e.g. new UI →
@@ -259,6 +336,7 @@ Agent(isolation: "worktree", team_name: "<feature>-team",
 **EXIT**
 - [ ] All planned changes implemented and pushed
 - [ ] Docs updated to match implementation
+- [ ] Ledger updated: `phase: "3"`, `phase_name: "IMPLEMENT"`, `decision` = changes implemented
 - → ALWAYS proceed to Phase 4 TEST (single-agent path)
 
 ---
@@ -268,6 +346,7 @@ Agent(isolation: "worktree", team_name: "<feature>-team",
 ### Path A: INTEGRATE (splittable)
 
 **ENTER**
+- Ledger check: `phase` must be `"3"`, `phase_name` = `"DISPATCH"`, `branch` non-null → OK
 - All sub-agent reports received from Phase 3 DISPATCH
 
 **DO**
@@ -291,14 +370,39 @@ Agent(isolation: "worktree", team_name: "<feature>-team",
 - 2nd rejection → escalate to specialist agent or flag for human
 - Main agent NEVER writes code
 
-**Step 4 — Merge:**
-- All pass → merge worktree diffs to feature branch
-- Unified commit (main agent writes commit message)
-- `ExitWorktree` (remove)
+**Step 4 — Merge transaction:**
+1. Snapshot HEAD: `git rev-parse HEAD` → record in ledger
+2. Merge worktree branches **sequentially** (not parallel); after each merge:
+   - Conflict? → STOP immediately → write `./.claude/runtime/merge_recovery.md`
+     (merged branches / failed branch / conflict files / recovery commands) →
+     wait for human
+   - Success? → continue to next branch
+3. All merged → unified commit (main agent writes commit message)
+4. `ExitWorktree` (remove merged worktrees)
+5. Delete merged worktree branches (optional cleanup)
+
+Merge recovery file format (`./.claude/runtime/merge_recovery.md`):
+```markdown
+# Merge Recovery — <feature-branch>
+
+## Snapshot
+- Pre-merge HEAD: <sha>
+- Timestamp: <ISO 8601>
+
+## Merge Status
+| Branch | Status | Notes |
+|--------|--------|-------|
+| worktree-a | merged | — |
+| worktree-b | **CONFLICT** | file.ts:45, util.ts:12 |
+
+## Recovery Commands
+git reset --hard <pre-merge-sha>   # rollback all merges
+```
 
 **EXIT**
-- [ ] All worktree diffs merged and committed
+- [ ] All worktree diffs merged and committed (or recovery file written)
 - [ ] Consistency audit passed or escalated
+- [ ] Ledger updated: `phase: "4"`, `phase_name: "INTEGRATE"`, `decision` = merged N branches
 - → ALWAYS proceed to Phase 5 TEST
 
 ---
@@ -306,6 +410,7 @@ Agent(isolation: "worktree", team_name: "<feature>-team",
 ### Path B: TEST (single-agent)
 
 **ENTER**
+- Ledger check: `phase` must be `"3"`, `phase_name` = `"IMPLEMENT"`, `branch` non-null → OK
 - Implementation complete from Phase 3 IMPLEMENT (single-agent)
 
 **DO**
@@ -315,6 +420,7 @@ Agent(isolation: "worktree", team_name: "<feature>-team",
 
 **EXIT**
 - [ ] All triggered test anchors pass
+- [ ] Ledger updated: `phase: "4"`, `phase_name: "TEST"`, `decision` = test results summary
 - → ALWAYS proceed to Phase 6 REVIEW
 
 ---
@@ -322,6 +428,7 @@ Agent(isolation: "worktree", team_name: "<feature>-team",
 ## Phase 5: TEST (splittable only)
 
 **ENTER**
+- Ledger check: `phase` must be `"4"`, `phase_name` = `"INTEGRATE"`, `branch` non-null → OK
 - INTEGRATE complete, all worktree diffs merged to feature branch
 
 **DO**
@@ -331,6 +438,7 @@ Agent(isolation: "worktree", team_name: "<feature>-team",
 
 **EXIT**
 - [ ] All triggered test anchors pass on the merged branch
+- [ ] Ledger updated: `phase: "5"`, `phase_name: "TEST"`, `decision` = test results summary
 - → ALWAYS proceed to Phase 6 REVIEW
 
 ---
@@ -338,6 +446,7 @@ Agent(isolation: "worktree", team_name: "<feature>-team",
 ## Phase 6: REVIEW
 
 **ENTER**
+- Ledger check: `phase` must be `"4"` or `"5"`, `phase_name` = `"TEST"` → OK
 - All tests passing (from Phase 4 single-agent path or Phase 5 splittable
   path)
 
@@ -360,6 +469,7 @@ Agent(isolation: "worktree", team_name: "<feature>-team",
 **EXIT**
 - [ ] Code-review-expert report reviewed
 - [ ] All checklist items addressed
+- [ ] Ledger updated: `phase: "6"`, `phase_name: "REVIEW"`, `decision` = review summary
 - → ALWAYS proceed to Phase 7 DONE
 
 ---
@@ -367,6 +477,7 @@ Agent(isolation: "worktree", team_name: "<feature>-team",
 ## Phase 7: DONE
 
 **ENTER**
+- Ledger check: `phase` must be `"6"`, `phase_name` = `"REVIEW"` → OK
 - REVIEW complete, all issues resolved
 
 **DO**
@@ -381,6 +492,7 @@ Agent(isolation: "worktree", team_name: "<feature>-team",
 **EXIT**
 - [ ] PR created (by user)
 - [ ] Archive decision made
+- [ ] Ledger updated: `phase: "7"`, `phase_name: "DONE"`, `decision` = archive decision
 - → Workflow complete
 
 ---
@@ -389,8 +501,9 @@ Agent(isolation: "worktree", team_name: "<feature>-team",
 
 ```
 develop
-  └── feature/<name>   (AI implements → user merges PR → branch deleted)
+  ├── feature/<name>   (new feature, enhancement, refactor)
+  └── bugfix/<name>    (bug fix, defect repair)
 ```
 
-Feature branches are created from `develop`. AI never merges to `develop`,
-never operates on `main`.
+Branches are created from `develop` with the prefix determined in Phase 0 TRIAGE.
+AI never merges to `develop`, never operates on `main`.

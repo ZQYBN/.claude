@@ -58,21 +58,23 @@ git status --porcelain
 
 **风险等级**：
 
-| 级别         | 文件特征                                                                    | 强制动作                |
-| ------------ | --------------------------------------------------------------------------- | ----------------------- |
-| **critical** | `workspaceFactory`, `types.ts`, `patientSessionReducer`, `auth/`, `router/` | A1 + A2 + A3 + 全量回归 |
-| **high**     | `store/`, `shared/`, `hooks/`                                               | A1 + 全量 Jest          |
-| **medium**   | `pages/`, `sections/`, `components/`, `Controller.java`                     | A1 + 对应锚点           |
-| **low**      | CSS, 文案, 注释                                                             | A1 only                 |
+| 级别         | 文件特征                                      | 强制动作                |
+| ------------ | --------------------------------------------- | ----------------------- |
+| **critical** | `types.ts`, `auth/`, `router/` + 项目级覆盖   | A1 + A2 + A3 + 全量回归 |
+| **high**     | `store/`, `shared/`, `hooks/`                 | A1 + 全量 Jest          |
+| **medium**   | `pages/`, `sections/`, `components/`, `Controller.java` | A1 + 对应锚点           |
+| **low**      | CSS, 文案, 注释                               | A1 only                 |
 
 **拓扑表**：文件匹配 → 必须经过的锚点。AI 不可跳过。
 
+以下为**通用默认拓扑**。项目特定路径（如 `workspaceFactory`、`patientSessionReducer`、
+`pages/prescription/` 等）必须在项目级覆盖文件中定义，不在此硬编码。
+
 | 变更文件特征                     | risk     | A1 编译 | A2 契约        | A3 流程    | A4 视觉              |
 | -------------------------------- | -------- | ------- | -------------- | ---------- | -------------------- |
-| `workspaceFactory` / `types.ts`  | critical | tsc     | contract       | jest 全量  | —                    |
+| `types.ts` / 全局类型文件        | critical | tsc     | contract       | jest 全量  | —                    |
 | `store/` / `shared/` / `hooks/`  | high     | tsc     | —              | jest 全量  | —                    |
-| `pages/prescription/` (处方流程) | medium   | tsc     | —              | Playwright | form screenshot      |
-| `pages/` 其他页面                | medium   | tsc     | —              | Playwright | page screenshot      |
+| `pages/` 页面                    | medium   | tsc     | —              | Playwright | page screenshot      |
 | `sections/` 分区表单             | medium   | tsc     | —              | Playwright | —                    |
 | `components/` UI 组件            | medium   | tsc     | —              | —          | component screenshot |
 | `Controller.java`                | medium   | javac   | response shape | —          | —                    |
@@ -80,6 +82,25 @@ git status --porcelain
 | `@Entity` / `*.sql`              | medium   | javac   | migration      | —          | —                    |
 | `DTO` / `record`                 | medium   | javac   | contract       | —          | —                    |
 | CSS / 文案                       | low      | —       | —              | —          | screenshot diff      |
+
+### 项目级拓扑覆盖
+
+当项目存在 `./.claude/skills/MyTestBasedOnGit/overrides.md` 时，其中的条目
+会**追加**到上方通用默认拓扑表中（项目条目优先匹配）。
+
+覆盖文件格式：
+
+```markdown
+## 项目拓扑覆盖
+
+| 变更文件特征              | risk     | A1 编译 | A2 契约  | A3 流程    | A4 视觉         |
+| ------------------------- | -------- | ------- | -------- | ---------- | --------------- |
+| `workspaceFactory`        | critical | tsc     | contract | jest 全量  | —               |
+| `patientSessionReducer`   | critical | tsc     | contract | jest 全量  | —               |
+| `pages/prescription/`     | medium   | tsc     | —        | Playwright | form screenshot |
+```
+
+若覆盖文件不存在，仅使用通用默认拓扑。覆盖文件由项目成员维护，AI 不自动生成。
 
 **A4 视觉快照约束**：
 

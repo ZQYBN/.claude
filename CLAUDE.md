@@ -40,6 +40,18 @@ DISPATCH/INTEGRATE 期间：
 
 ---
 
+### 五、依赖校验协议
+
+**所有硬依赖 skill 必须在 Phase 0 完成三段校验，缺一不可：**
+
+1. **索引存在** — CLAUDE.md 的"工作流硬依赖"表中已注册
+2. **文件存在** — 自定义 skill 在 `skills/<name>/SKILL.md` 可读；built-in 命令在当前 runtime 可用
+3. **运行时可达** — 当前 session 可以实际调用该 skill/命令
+
+**任一校验失败 → STOP，输出缺失报告，禁止进入 Phase 1。**
+
+---
+
 ## 工作流
 
 ```
@@ -90,7 +102,18 @@ MyWorkFlow Phase 0 TRIAGE 路由表：
 | `MyWorkFlow-Frontend` | 由 MyWorkFlow Phase 0 TRIAGE 调用 | 前端编译检查、skill 调用、review 项 |
 | `MyWorkFlow-Backend` | 由 MyWorkFlow Phase 0 TRIAGE 调用 | 后端编译检查、schema 确认、review 项 |
 
-领域 Skills 由 MyWorkFlow 在各阶段自动调用，不在此列出。
+
+## 工作流硬依赖
+
+以下 skill 是 MyWorkFlow Phase N 的强制调用项，非可选。缺失任何一个 → Phase 0 STOP。
+
+| Skill | 类型 | 调用 Phase | 缺失行为 |
+|-------|------|-----------|---------|
+| `code-review-expert` | 自定义 skill | Phase 6 REVIEW | STOP，报告"code-review-expert 未安装" |
+| `simplify` | built-in 命令 | Phase 6 REVIEW | STOP，报告"当前环境不支持 simplify 命令" |
+| `MyTestBasedOnGit` | 自定义 skill | Phase 4/5 TEST | STOP，报告"MyTestBasedOnGit 未安装" |
+
+上述 skill 不因"领域 Skills"条款而豁免索引注册。
 
 ---
 
