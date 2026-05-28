@@ -1,12 +1,10 @@
 ---
 name: MyWorkFlow-Skills
 description: >
-  Skill lifecycle manager. Invoke this skill when the user asks to promote a
-  skill to auto-trigger, demote a skill to manual-only, delete a skill, or
-  add a new skill. Also invoke when you notice a skill consistently
-  under-triggers or over-triggers and needs its trigger configuration
-  adjusted. Skills are AI capability modules — each one encapsulates domain
-  knowledge and execution workflows for a specific task family.
+  Invoked by MyWorkFlow Phase 0 TRIAGE for skill management tasks, or Phase 6
+  REVIEW for skill trigger issues. Handles: adding, modifying, deleting, promoting,
+  and demoting skills, and adjusting trigger configurations. Do NOT invoke this
+  skill directly — always enter through MyWorkFlow.
 ---
 
 # MyWorkFlow-Skills

@@ -46,8 +46,19 @@ DISPATCH/INTEGRATE 期间：
 DISCUSS → PLAN → DISPATCH(或IMPLEMENT) → INTEGRATE(或TEST) → TEST → REVIEW → DONE
 ```
 
-入口 skill：`MyWorkFlow`（任务开始时自动触发，判定类型，加载补充）。
-详细流程见 skill 文件。铁律在此，skill 文件不得弱化。
+入口 skill：`MyWorkFlow`（**所有任务**的唯一入口，由 Phase 0 TRIAGE 判定类型并分流）。
+
+MyWorkFlow Phase 0 TRIAGE 路由表：
+
+| 任务类型 | 判定条件 | 路由目标 |
+|---------|---------|---------|
+| CODE | 涉及代码文件（`.java`/`.tsx`/`.ts`/`.py` 等）、功能开发、Bug 修复、重构 | 继续 MyWorkFlow → Phase 1 DISCUSS |
+| FILE | 数据清洗、格式转换、文档生成、报表、可视化、RAG/GIS 处理 | 调用 `MyWorkFlow-Docs`，退出 MyWorkFlow |
+| SKILL | 新增/修改/删除 skill、调整触发配置 | 调用 `MyWorkFlow-Skills`，退出 MyWorkFlow |
+| RULE | 新增/修改/废弃 rule、规则缺口或冲突 | 调用 `MyWorkFlow-Rules`，退出 MyWorkFlow |
+
+子 skill（MyWorkFlow-Docs、MyWorkFlow-Skills、MyWorkFlow-Rules）禁止直接调用，
+必须通过 MyWorkFlow Phase 0 TRIAGE 进入。
 
 ---
 
@@ -71,12 +82,13 @@ DISCUSS → PLAN → DISPATCH(或IMPLEMENT) → INTEGRATE(或TEST) → TEST → 
 
 | Skill | 触发 | 用途 |
 |-------|------|------|
-| `MyWorkFlow` | 自动：任务开始 | 流程编排，7 phase（可拆分）或 6 phase（单 agent） |
-| `MyWorkFlow-Team` | 由 MyWorkFlow 在 Phase 2 加载 | Agent team 编排（拆分、派发、集成审查） |
-| `MyWorkFlow-Frontend` | 由 MyWorkFlow 加载 | 前端编译检查、skill 调用、review 项 |
-| `MyWorkFlow-Backend` | 由 MyWorkFlow 加载 | 后端编译检查、schema 确认、review 项 |
-| `MyWorkFlow-Rules` | 手动 | 规则变更流程 |
-| `MyWorkFlow-Skills` | 手动 | Skill 变更流程 |
+| `MyWorkFlow` | 自动：所有任务唯一入口 | Phase 0 TRIAGE 判定类型并分流：CODE 内部执行，FILE/SKILL/RULE 调用子 skill |
+| `MyWorkFlow-Docs` | 由 MyWorkFlow Phase 0 TRIAGE 调用 | 阶段化文件流水线，目录状态机，README 落盘，只读隔离 |
+| `MyWorkFlow-Skills` | 由 MyWorkFlow Phase 0 TRIAGE / Phase 6 REVIEW 调用 | Skill 生命周期管理（新增/修改/删除/调整触发） |
+| `MyWorkFlow-Rules` | 由 MyWorkFlow Phase 0 TRIAGE / Phase 6 REVIEW 调用 | Rule 生命周期管理（新增/修改/废弃/删除） |
+| `MyWorkFlow-Team` | 由 MyWorkFlow Phase 2 PLAN 调用 | Agent team 编排（拆分、派发、集成审查） |
+| `MyWorkFlow-Frontend` | 由 MyWorkFlow Phase 0 TRIAGE 调用 | 前端编译检查、skill 调用、review 项 |
+| `MyWorkFlow-Backend` | 由 MyWorkFlow Phase 0 TRIAGE 调用 | 后端编译检查、schema 确认、review 项 |
 
 领域 Skills 由 MyWorkFlow 在各阶段自动调用，不在此列出。
 

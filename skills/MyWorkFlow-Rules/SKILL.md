@@ -1,13 +1,11 @@
 ---
 name: MyWorkFlow-Rules
 description: >
-  Rule lifecycle manager. Invoke this skill when you detect a rule gap (a bug
-  that should have been prevented by an existing rule but wasn't), a rule
-  conflict (two rules pulling in opposite directions), an obsolete rule
-  (technology upgrade made it irrelevant), or an over-constraining rule (the
-  rule forces a worse outcome). Also invoke when the user explicitly asks to
-  create, modify, deprecate, or delete a rule. This skill defines the
-  end-to-end process: discover → discuss → draft → confirm → write → record.
+  Invoked by MyWorkFlow Phase 0 TRIAGE for rule management tasks, or Phase 6
+  REVIEW for rule gap/conflict resolution. Handles: creating, modifying,
+  deprecating, and deleting rules. Defines the end-to-end process: discover →
+  discuss → draft → confirm → write → record. Do NOT invoke this skill directly
+  — always enter through MyWorkFlow.
 ---
 
 # MyWorkFlow-Rules

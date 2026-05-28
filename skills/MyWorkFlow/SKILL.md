@@ -2,16 +2,14 @@
 name: MyWorkFlow
 description: >
   USE THIS SKILL AT THE START OF EVERY TASK — before writing any code, before
-  making any plan, before any implementation. This is the master workflow
-  orchestrator. It determines whether the task is frontend, backend, or
-  fullstack, then walks through up to seven phases: DISCUSS → PLAN →
-  DISPATCH (or IMPLEMENT) → INTEGRATE (or TEST) → TEST → REVIEW → DONE.
-  Splittable tasks use the agent team path with parallel sub-agents;
-  single-agent tasks use the original path. Invoke this skill when the user
-  asks you to build a feature, fix a bug, refactor code, add a component,
-  create an API endpoint, modify the database schema, update UI, or make any
-  change to the codebase. If you are about to write code, you need this skill
-  first. It loads frontend/backend supplements (MyWorkFlow-Frontend,
+  making any plan, before any implementation. This is the SINGLE entry point
+  for ALL tasks. Phase 0 TRIAGE determines the task type and routes to the
+  correct execution path: CODE tasks continue inside MyWorkFlow (DISCUSS →
+  PLAN → DISPATCH/IMPLEMENT → INTEGRATE/TEST → TEST → REVIEW → DONE), while
+  FILE tasks route to MyWorkFlow-Docs, SKILL tasks route to MyWorkFlow-Skills,
+  and RULE tasks route to MyWorkFlow-Rules. Splittable code tasks use the
+  agent team path with parallel sub-agents; single-agent tasks use the
+  original path. It loads frontend/backend supplements (MyWorkFlow-Frontend,
   MyWorkFlow-Backend) and the agent team skill (MyWorkFlow-Team) when tasks
   can be split.
 ---
@@ -73,15 +71,19 @@ exit gate has been passed.
 
 | Condition | Type | Action |
 |-----------|------|--------|
+| Skill/rule management request | Meta | Hand off to `MyWorkFlow-Skills` or `MyWorkFlow-Rules`; exit MyWorkFlow |
+| Non-code file processing request | File | Hand off to `MyWorkFlow-Docs`; exit MyWorkFlow |
 | Files under `frontend/` only | Frontend | Load `MyWorkFlow-Frontend` |
 | Files under `backend/` only | Backend | Load `MyWorkFlow-Backend` |
 | Files in both layers | Fullstack | Load both |
 | Pure docs, config, or conversation | General | No supplement |
 
 **EXIT**
-- [ ] Task type recorded: FRONTEND / BACKEND / FULLSTACK / GENERAL
-- [ ] Supplements loaded (if applicable)
-- → ALWAYS proceed to Phase 1
+- [ ] Task type recorded: FRONTEND / BACKEND / FULLSTACK / GENERAL / FILE / SKILL / RULE
+- [ ] If CODE (FRONTEND/BACKEND/FULLSTACK/GENERAL): supplements loaded (if applicable) → proceed to Phase 1 DISCUSS
+- [ ] If FILE: invoked `MyWorkFlow-Docs` → exit MyWorkFlow
+- [ ] If SKILL: invoked `MyWorkFlow-Skills` → exit MyWorkFlow
+- [ ] If RULE: invoked `MyWorkFlow-Rules` → exit MyWorkFlow
 
 ---
 
